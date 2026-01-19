@@ -1,0 +1,141 @@
+{
+  "info": {
+    "name": "Finanzas - Sequelize",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Ventas",
+      "item": [
+        {
+          "name": "Listar Ventas (Filtro Mes)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3002/ventas?filtro=mes"
+            }
+          }
+        },
+        {
+          "name": "Crear Venta",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"fecha\": \"2024-01-18\",\n    \"categoria\": \"Software\",\n    \"monto\": 1500.50,\n    \"descripcion\": \"Licencia Anual\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3002/ventas"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Venta",
+          "request": {
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"monto\": 2000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3002/ventas/1"
+            }
+          }
+        },
+        {
+          "name": "Eliminar Venta (Soft)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "http://localhost:3002/ventas/1"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gastos",
+      "item": [
+        {
+          "name": "Listar Gastos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3002/gastos?periodo=semana"
+            }
+          }
+        },
+        {
+          "name": "Crear Gasto",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"categoria\": \"Oficina\",\n    \"monto\": 300,\n    \"descripcion\": \"Papelería\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3002/gastos"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sistema",
+      "item": [
+        {
+          "name": "Importar JSON (Bulk)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"tipo\": \"venta\",\n    \"datos\": [\n        { \"categoria\": \"Hardware\", \"monto\": 500, \"descripcion\": \"Mouse\" },\n        { \"categoria\": \"Hardware\", \"monto\": 1200, \"descripcion\": \"Teclado\" }\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:3002/import-json"
+            }
+          }
+        },
+        {
+          "name": "Dashboard Chart",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3002/dashboard/line-chart"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "PEGAR_TOKEN_AQUI",
+        "type": "string"
+      }
+    ]
+  }
+}
