@@ -7,6 +7,7 @@ exports.createGasto = async (req, res) => {
         const { fecha, categoria, monto, descripcion } = req.body;
         const usuario_id = req.user.id;
 
+        // Normalización de fecha para evitar desfases
         const fechaNormalizada = fecha ? new Date(fecha + "T12:00:00") : new Date();
 
         const gasto = await Gasto.create({
@@ -29,6 +30,7 @@ exports.createGasto = async (req, res) => {
 
         res.status(201).json(gasto);
     } catch (error) {
+        console.error("Error al crear gasto:", error);
         res.status(500).json({ error: 'Error al crear gasto' });
     }
 };
@@ -59,13 +61,11 @@ exports.getGastos = async (req, res) => {
                     fin.setHours(23, 59, 59, 999);
                     break;
                 case 'mes':
-                    // fechaSeleccionada llega como "YYYY-MM"
                     const [anioM, mesM] = fechaSeleccionada.split('-');
                     inicio = new Date(anioM, mesM - 1, 1, 0, 0, 0);
                     fin = new Date(anioM, mesM, 0, 23, 59, 59);
                     break;
                 case 'año':
-                    // fechaSeleccionada llega como "YYYY"
                     inicio = new Date(fechaSeleccionada, 0, 1, 0, 0, 0);
                     fin = new Date(fechaSeleccionada, 11, 31, 23, 59, 59);
                     break;
@@ -80,7 +80,7 @@ exports.getGastos = async (req, res) => {
     }
 };
 
-// 3. PUT /gastos/:id – Actualizar y recalcular saldo
+// 3. PUT /gastos/:id – Actualizar y recalcular saldo (CORREGIDO)
 exports.updateGasto = async (req, res) => {
     try {
         const { id } = req.params;
@@ -90,24 +90,43 @@ exports.updateGasto = async (req, res) => {
         const gasto = await Gasto.findOne({ where: { id, usuario_id } });
         if (!gasto) return res.status(404).json({ error: 'Gasto no encontrado' });
 
-        if (monto !== undefined && parseFloat(monto) !== gasto.monto) {
-            let metrica = await Metrica.findOne({ where: { usuario_id } });
-            if (metrica) {
-                metrica.total_gastos = metrica.total_gastos - gasto.monto + parseFloat(monto);
+        // Actualización de métricas si cambia el monto
+        if (monto !== undefined) {
+            const nuevoMonto = parseFloat(monto);
+            const montoAnterior = parseFloat(gasto.monto);
+
+            if (nuevoMonto !== montoAnterior) {
+                let [metrica] = await Metrica.findOrCreate({
+                    where: { usuario_id },
+                    defaults: { total_ventas: 0, total_gastos: 0, saldo: 0 }
+                });
+
+                metrica.total_gastos = (metrica.total_gastos - montoAnterior) + nuevoMonto;
                 metrica.saldo = metrica.total_ventas - metrica.total_gastos;
                 await metrica.save();
             }
         }
 
+        // PROTECCIÓN DE FECHA: Evita el error "Invalid date" en PostgreSQL
+        let fechaFinal = gasto.fecha;
+        if (fecha && fecha !== 'Invalid date') {
+            const d = new Date(fecha + "T12:00:00");
+            if (!isNaN(d.getTime())) {
+                fechaFinal = d;
+            }
+        }
+
         await gasto.update({
-            monto,
-            categoria,
-            descripcion,
-            fecha: fecha ? new Date(fecha + "T12:00:00") : gasto.fecha
+            monto: monto !== undefined ? parseFloat(monto) : gasto.monto,
+            categoria: categoria || gasto.categoria,
+            descripcion: descripcion || gasto.descripcion,
+            fecha: fechaFinal
         });
+
         res.json({ message: 'Gasto actualizado', data: gasto });
     } catch (error) {
-        res.status(500).json({ error: 'Error al actualizar' });
+        console.error("Error detallado en Update Gasto:", error);
+        res.status(500).json({ error: 'Error al actualizar registro' });
     }
 };
 
@@ -128,13 +147,13 @@ exports.deleteGasto = async (req, res) => {
         }
 
         await gasto.destroy();
-        res.json({ message: 'Gasto eliminado (soft delete)' });
+        res.json({ message: 'Gasto eliminado' });
     } catch (error) {
         res.status(500).json({ error: 'Error al eliminar' });
     }
 };
 
-// 5. POST /import-json – Importación masiva con recálculo total
+// 5. POST /import-json
 exports.importJson = async (req, res) => {
     try {
         const { datos } = req.body;
@@ -143,7 +162,7 @@ exports.importJson = async (req, res) => {
         const datosConUsuario = datos.map(item => ({
             ...item,
             usuario_id,
-            fecha: item.fecha ? new Date(item.fecha + "T12:00:00") : new Date()
+            fecha: (item.fecha && item.fecha !== 'Invalid date') ? new Date(item.fecha + "T12:00:00") : new Date()
         }));
 
         await Gasto.bulkCreate(datosConUsuario);
@@ -158,8 +177,8 @@ exports.importJson = async (req, res) => {
             saldo: totalV - totalG
         });
 
-        res.status(201).json({ message: `Importación de gastos exitosa` });
+        res.status(201).json({ message: `Importación exitosa` });
     } catch (error) {
-        res.status(500).json({ error: 'Error al importar gastos' });
+        res.status(500).json({ error: 'Error al importar' });
     }
 };

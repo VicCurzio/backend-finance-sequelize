@@ -2,12 +2,11 @@ const { Venta, Metrica, Gasto } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../models');
 
-// 1. POST /ventas – Crear venta y actualizar métricas
+// 1. POST /ventas
 exports.createVenta = async (req, res) => {
     try {
         const { fecha, categoria, monto, descripcion } = req.body;
         const usuario_id = req.user.id;
-
         const fechaNormalizada = fecha ? new Date(fecha + "T12:00:00") : new Date();
 
         const nuevaVenta = await Venta.create({
@@ -33,7 +32,7 @@ exports.createVenta = async (req, res) => {
     }
 };
 
-// 2. GET /ventas – Listar con Filtro de Calendario Natural (MEJORADO)
+// 2. GET /ventas
 exports.getVentas = async (req, res) => {
     try {
         const { filtro, fechaSeleccionada } = req.query;
@@ -42,14 +41,12 @@ exports.getVentas = async (req, res) => {
 
         if (filtro && fechaSeleccionada) {
             let inicio, fin;
-
             switch (filtro) {
                 case 'dia':
                     inicio = new Date(fechaSeleccionada + "T00:00:00");
                     fin = new Date(fechaSeleccionada + "T23:59:59");
                     break;
                 case 'semana':
-                    // Obtiene Lunes y Domingo de la semana de la fecha elegida
                     let ref = new Date(fechaSeleccionada + "T12:00:00");
                     let day = ref.getDay();
                     let diff = ref.getDate() - day + (day === 0 ? -6 : 1);
@@ -60,13 +57,11 @@ exports.getVentas = async (req, res) => {
                     fin.setHours(23, 59, 59, 999);
                     break;
                 case 'mes':
-                    // fechaSeleccionada es "YYYY-MM"
                     const [anioM, mesM] = fechaSeleccionada.split('-');
                     inicio = new Date(anioM, mesM - 1, 1, 0, 0, 0);
                     fin = new Date(anioM, mesM, 0, 23, 59, 59);
                     break;
                 case 'año':
-                    // fechaSeleccionada es "YYYY"
                     inicio = new Date(fechaSeleccionada, 0, 1, 0, 0, 0);
                     fin = new Date(fechaSeleccionada, 11, 31, 23, 59, 59);
                     break;
@@ -81,7 +76,7 @@ exports.getVentas = async (req, res) => {
     }
 };
 
-// 3. PUT /ventas/:id – Actualizar
+// 3. PUT /ventas/:id - ACTUALIZADO CON FIX DE FECHA
 exports.updateVenta = async (req, res) => {
     try {
         const { id } = req.params;
@@ -91,29 +86,45 @@ exports.updateVenta = async (req, res) => {
         const venta = await Venta.findOne({ where: { id, usuario_id } });
         if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
-        if (monto !== undefined && parseFloat(monto) !== venta.monto) {
-            let metrica = await Metrica.findOne({ where: { usuario_id } });
-            if (metrica) {
-                metrica.total_ventas = metrica.total_ventas - venta.monto + parseFloat(monto);
+        // Actualizar métricas si cambia el monto
+        if (monto !== undefined) {
+            const nuevoMonto = parseFloat(monto);
+            const montoAnterior = parseFloat(venta.monto);
+            if (nuevoMonto !== montoAnterior) {
+                let [metrica] = await Metrica.findOrCreate({
+                    where: { usuario_id },
+                    defaults: { total_ventas: 0, total_gastos: 0, saldo: 0 }
+                });
+                metrica.total_ventas = (metrica.total_ventas - montoAnterior) + nuevoMonto;
                 metrica.saldo = metrica.total_ventas - metrica.total_gastos;
                 await metrica.save();
             }
         }
 
+        // VALIDACIÓN DE FECHA PARA POSTGRES
+        let fechaFinal = venta.fecha;
+        if (fecha && fecha !== 'Invalid date') {
+            const d = new Date(fecha + "T12:00:00");
+            if (!isNaN(d.getTime())) {
+                fechaFinal = d;
+            }
+        }
+
         await venta.update({
-            monto,
-            categoria,
-            descripcion,
-            fecha: fecha ? new Date(fecha + "T12:00:00") : venta.fecha
+            monto: monto !== undefined ? parseFloat(monto) : venta.monto,
+            categoria: categoria || venta.categoria,
+            descripcion: descripcion || venta.descripcion,
+            fecha: fechaFinal
         });
 
         res.json({ message: 'Venta actualizada', data: venta });
     } catch (error) {
+        console.error("Error en Update:", error);
         res.status(500).json({ error: 'Error al actualizar' });
     }
 };
 
-// 4. DELETE /ventas/:id – Borrado lógico
+// 4. DELETE /ventas/:id
 exports.deleteVenta = async (req, res) => {
     try {
         const { id } = req.params;
