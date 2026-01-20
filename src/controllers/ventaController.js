@@ -1,170 +1,184 @@
-const { Venta, Metrica, Gasto } = require('../models'); // Asegúrate de importar Gasto para el importJson
+const { Venta, Metrica, Gasto } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../models');
+
 // 1. POST /ventas – Crear venta y actualizar métricas
 exports.createVenta = async (req, res) => {
     try {
         const { fecha, categoria, monto, descripcion } = req.body;
-
-        // El usuario_id NO viene del body, se saca del token decodificado por el middleware
         const usuario_id = req.user.id;
 
-        // Crear el registro de venta
+        const fechaNormalizada = fecha ? new Date(fecha + "T12:00:00") : new Date();
+
         const nuevaVenta = await Venta.create({
-            fecha: fecha || new Date(),
+            fecha: fechaNormalizada,
             categoria,
             monto,
             descripcion,
             usuario_id
         });
 
-        // ACTUALIZACIÓN DE MÉTRICAS (KPIs agregados - Requisito 1.3)
-        // Buscamos la fila de métricas del usuario o la creamos si no existe
         let [metrica] = await Metrica.findOrCreate({
             where: { usuario_id },
             defaults: { total_ventas: 0, total_gastos: 0, saldo: 0 }
         });
 
-        // Sumamos el monto al total de ventas y actualizamos el saldo
         metrica.total_ventas += parseFloat(monto);
         metrica.saldo = metrica.total_ventas - metrica.total_gastos;
         await metrica.save();
 
-        res.status(201).json({
-            message: "Venta registrada y métricas actualizadas",
-            data: nuevaVenta
-        });
+        res.status(201).json({ message: "Venta registrada", data: nuevaVenta });
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: 'Error al procesar la venta' });
     }
 };
 
-// 2. DELETE /ventas/:id – Borrado lógico (Soft Delete - Requisito 1.4 y 1.8)
-exports.deleteVenta = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const usuario_id = req.user.id;
-
-        // Buscamos que la venta pertenezca al usuario autenticado
-        const venta = await Venta.findOne({ where: { id, usuario_id } });
-
-        if (!venta) {
-            return res.status(404).json({ error: 'Venta no encontrada o no autorizada' });
-        }
-
-        // Al estar activo 'paranoid: true', esto solo llena la columna deleted_at
-        await venta.destroy();
-
-        res.json({ message: 'Venta eliminada exitosamente (borrado lógico)' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar la venta' });
-    }
-};
-
-// GET /ventas – Listar ventas con filtros
+// 2. GET /ventas – Listar con Filtro de Calendario Natural (MEJORADO)
 exports.getVentas = async (req, res) => {
     try {
-        const { periodo, filtro } = req.query;
-        const p = periodo || filtro; // Acepta ambos parámetros
+        const { filtro, fechaSeleccionada } = req.query;
         const usuario_id = req.user.id;
         let where = { usuario_id };
 
-        if (p) {
-            let fechaLimite = new Date();
-            if (p === 'dia') fechaLimite.setHours(0, 0, 0, 0);
-            else if (p === 'semana') fechaLimite.setDate(fechaLimite.getDate() - 7);
-            else if (p === 'mes') fechaLimite.setMonth(fechaLimite.getMonth() - 1);
-            else if (p === 'año') fechaLimite.setFullYear(fechaLimite.getFullYear() - 1);
+        if (filtro && fechaSeleccionada) {
+            let inicio, fin;
 
-            where.fecha = { [Op.gte]: fechaLimite };
+            switch (filtro) {
+                case 'dia':
+                    inicio = new Date(fechaSeleccionada + "T00:00:00");
+                    fin = new Date(fechaSeleccionada + "T23:59:59");
+                    break;
+                case 'semana':
+                    // Obtiene Lunes y Domingo de la semana de la fecha elegida
+                    let ref = new Date(fechaSeleccionada + "T12:00:00");
+                    let day = ref.getDay();
+                    let diff = ref.getDate() - day + (day === 0 ? -6 : 1);
+                    inicio = new Date(ref.setDate(diff));
+                    inicio.setHours(0, 0, 0, 0);
+                    fin = new Date(inicio);
+                    fin.setDate(inicio.getDate() + 6);
+                    fin.setHours(23, 59, 59, 999);
+                    break;
+                case 'mes':
+                    // fechaSeleccionada es "YYYY-MM"
+                    const [anioM, mesM] = fechaSeleccionada.split('-');
+                    inicio = new Date(anioM, mesM - 1, 1, 0, 0, 0);
+                    fin = new Date(anioM, mesM, 0, 23, 59, 59);
+                    break;
+                case 'año':
+                    // fechaSeleccionada es "YYYY"
+                    inicio = new Date(fechaSeleccionada, 0, 1, 0, 0, 0);
+                    fin = new Date(fechaSeleccionada, 11, 31, 23, 59, 59);
+                    break;
+            }
+            if (inicio && fin) where.fecha = { [Op.between]: [inicio, fin] };
         }
 
-        const ventas = await Venta.findAll({ where });
+        const ventas = await Venta.findAll({ where, order: [['fecha', 'DESC']] });
         res.json(ventas);
     } catch (error) {
         res.status(500).json({ error: 'Error al listar ventas' });
     }
-}
-
-// POST /import-json – Cargar registros masivos
-exports.importJson = async (req, res) => {
-    try {
-        const { tipo, datos } = req.body; // tipo: 'venta' o 'gasto'
-        const usuario_id = req.user.id;
-
-        // Añadimos el usuario_id a cada objeto del array
-        const datosConUsuario = datos.map(item => ({ ...item, usuario_id }));
-
-        if (tipo === 'venta') {
-            await Venta.bulkCreate(datosConUsuario);
-        } else {
-            await Gasto.bulkCreate(datosConUsuario);
-        }
-
-        res.status(201).json({ message: `Importación de ${tipo}s exitosa` });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al importar los datos' });
-    }
 };
 
-exports.getLineChartData = async (req, res) => {
-    try {
-        const usuario_id = req.user.id;
-
-        // Consultamos ventas y gastos agrupados por fecha
-        const data = await sequelize.query(
-            `SELECT fecha, 
-             SUM(CASE WHEN tipo = 'venta' THEN monto ELSE 0 END) as ventas,
-             SUM(CASE WHEN tipo = 'gasto' THEN monto ELSE 0 END) as gastos
-             FROM (
-                SELECT fecha, monto, 'venta' as tipo FROM ventas WHERE usuario_id = :usuario_id AND deleted_at IS NULL
-                UNION ALL
-                SELECT fecha, monto, 'gasto' as tipo FROM gastos WHERE usuario_id = :usuario_id AND deleted_at IS NULL
-             ) as movimientos
-             GROUP BY fecha ORDER BY fecha ASC`,
-            {
-                replacements: { usuario_id },
-                type: sequelize.QueryTypes.SELECT
-            }
-        );
-
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al obtener datos del gráfico' });
-    }
-};
-
-// PUT /ventas/:id – Actualizar venta
+// 3. PUT /ventas/:id – Actualizar
 exports.updateVenta = async (req, res) => {
     try {
         const { id } = req.params;
         const { monto, categoria, descripcion, fecha } = req.body;
         const usuario_id = req.user.id;
 
-        // 1. Buscar la venta original
         const venta = await Venta.findOne({ where: { id, usuario_id } });
+        if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
-        if (!venta) {
-            return res.status(404).json({ error: 'Venta no encontrada' });
-        }
-
-        // 2. Si el monto cambió, ajustar las métricas
         if (monto !== undefined && parseFloat(monto) !== venta.monto) {
             let metrica = await Metrica.findOne({ where: { usuario_id } });
             if (metrica) {
-                // Restamos el monto viejo y sumamos el nuevo
                 metrica.total_ventas = metrica.total_ventas - venta.monto + parseFloat(monto);
                 metrica.saldo = metrica.total_ventas - metrica.total_gastos;
                 await metrica.save();
             }
         }
 
-        // 3. Actualizar el registro
-        await venta.update({ monto, categoria, descripcion, fecha });
+        await venta.update({
+            monto,
+            categoria,
+            descripcion,
+            fecha: fecha ? new Date(fecha + "T12:00:00") : venta.fecha
+        });
 
-        res.json({ message: 'Venta actualizada correctamente', data: venta });
+        res.json({ message: 'Venta actualizada', data: venta });
     } catch (error) {
-        res.status(500).json({ error: 'Error al actualizar la venta' });
+        res.status(500).json({ error: 'Error al actualizar' });
+    }
+};
+
+// 4. DELETE /ventas/:id – Borrado lógico
+exports.deleteVenta = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const venta = await Venta.findOne({ where: { id, usuario_id: req.user.id } });
+        if (!venta) return res.status(404).json({ error: 'No existe el registro' });
+
+        let metrica = await Metrica.findOne({ where: { usuario_id: req.user.id } });
+        if (metrica) {
+            metrica.total_ventas -= venta.monto;
+            metrica.saldo = metrica.total_ventas - metrica.total_gastos;
+            await metrica.save();
+        }
+
+        await venta.destroy();
+        res.json({ message: 'Eliminado correctamente' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al eliminar' });
+    }
+};
+
+// 5. GET /dashboard/line-chart
+exports.getLineChartData = async (req, res) => {
+    try {
+        const usuario_id = req.user.id;
+        const data = await sequelize.query(
+            `SELECT 
+                DATE(movimientos.fecha) as fecha, 
+                SUM(CASE WHEN tipo = 'venta' THEN monto ELSE 0 END) as ventas,
+                SUM(CASE WHEN tipo = 'gasto' THEN monto ELSE 0 END) as gastos
+             FROM (
+                SELECT fecha, monto, 'venta' as tipo FROM ventas WHERE usuario_id = :usuario_id AND "deleted_at" IS NULL
+                UNION ALL
+                SELECT fecha, monto, 'gasto' as tipo FROM gastos WHERE usuario_id = :usuario_id AND "deleted_at" IS NULL
+             ) as movimientos
+             GROUP BY DATE(movimientos.fecha) 
+             ORDER BY fecha ASC`,
+            { replacements: { usuario_id }, type: sequelize.QueryTypes.SELECT }
+        );
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'Error en gráfico' });
+    }
+};
+
+// 6. POST /import-json
+exports.importJson = async (req, res) => {
+    try {
+        const { tipo, datos } = req.body;
+        const usuario_id = req.user.id;
+
+        const datosConUsuario = datos.map(item => ({
+            ...item,
+            usuario_id,
+            fecha: item.fecha ? new Date(item.fecha + "T12:00:00") : new Date()
+        }));
+
+        if (tipo === 'venta') await Venta.bulkCreate(datosConUsuario);
+        else await Gasto.bulkCreate(datosConUsuario);
+
+        const totalV = await Venta.sum('monto', { where: { usuario_id } }) || 0;
+        const totalG = await Gasto.sum('monto', { where: { usuario_id } }) || 0;
+        await Metrica.upsert({ usuario_id, total_ventas: totalV, total_gastos: totalG, saldo: totalV - totalG });
+
+        res.status(201).json({ message: `Importación de ${tipo} exitosa` });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al importar' });
     }
 };
