@@ -2,7 +2,6 @@ const { Venta, Metrica, Gasto } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../models');
 
-// 1. POST /ventas
 exports.createVenta = async (req, res) => {
     try {
         const { fecha, categoria, monto, descripcion } = req.body;
@@ -32,7 +31,6 @@ exports.createVenta = async (req, res) => {
     }
 };
 
-// 2. GET /ventas
 exports.getVentas = async (req, res) => {
     try {
         const { filtro, fechaSeleccionada } = req.query;
@@ -76,7 +74,6 @@ exports.getVentas = async (req, res) => {
     }
 };
 
-// 3. PUT /ventas/:id - ACTUALIZADO CON FIX DE FECHA
 exports.updateVenta = async (req, res) => {
     try {
         const { id } = req.params;
@@ -86,7 +83,6 @@ exports.updateVenta = async (req, res) => {
         const venta = await Venta.findOne({ where: { id, usuario_id } });
         if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
-        // Actualizar métricas si cambia el monto
         if (monto !== undefined) {
             const nuevoMonto = parseFloat(monto);
             const montoAnterior = parseFloat(venta.monto);
@@ -101,7 +97,6 @@ exports.updateVenta = async (req, res) => {
             }
         }
 
-        // VALIDACIÓN DE FECHA PARA POSTGRES
         let fechaFinal = venta.fecha;
         if (fecha && fecha !== 'Invalid date') {
             const d = new Date(fecha + "T12:00:00");
@@ -124,7 +119,6 @@ exports.updateVenta = async (req, res) => {
     }
 };
 
-// 4. DELETE /ventas/:id
 exports.deleteVenta = async (req, res) => {
     try {
         const { id } = req.params;
@@ -145,7 +139,6 @@ exports.deleteVenta = async (req, res) => {
     }
 };
 
-// 5. GET /dashboard/line-chart
 exports.getLineChartData = async (req, res) => {
     try {
         const usuario_id = req.user.id;
@@ -169,7 +162,6 @@ exports.getLineChartData = async (req, res) => {
     }
 };
 
-// 6. POST /import-json
 exports.importJson = async (req, res) => {
     try {
         const { tipo, datos } = req.body;

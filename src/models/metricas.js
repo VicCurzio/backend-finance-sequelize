@@ -4,7 +4,6 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Metrica extends Model {
     static associate(models) {
-      // Sin asociaciones directas externas
     }
   }
 
@@ -24,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
     usuario_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      unique: true // Cada usuario tiene solo una fila de métricas
+      unique: true
     }
   }, {
     sequelize,

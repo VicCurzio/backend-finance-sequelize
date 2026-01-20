@@ -1,13 +1,11 @@
 const { Gasto, Metrica, Venta } = require('../models');
 const { Op } = require('sequelize');
 
-// 1. POST /gastos – Crear gasto y actualizar métricas
 exports.createGasto = async (req, res) => {
     try {
         const { fecha, categoria, monto, descripcion } = req.body;
         const usuario_id = req.user.id;
 
-        // Normalización de fecha para evitar desfases
         const fechaNormalizada = fecha ? new Date(fecha + "T12:00:00") : new Date();
 
         const gasto = await Gasto.create({
@@ -18,7 +16,6 @@ exports.createGasto = async (req, res) => {
             usuario_id
         });
 
-        // Actualización de KPIs en la tabla Metrica
         let [metrica] = await Metrica.findOrCreate({
             where: { usuario_id },
             defaults: { total_ventas: 0, total_gastos: 0, saldo: 0 }
@@ -35,7 +32,6 @@ exports.createGasto = async (req, res) => {
     }
 };
 
-// 2. GET /gastos – Listar con Filtro de Calendario Natural
 exports.getGastos = async (req, res) => {
     try {
         const { filtro, fechaSeleccionada } = req.query;
@@ -80,7 +76,6 @@ exports.getGastos = async (req, res) => {
     }
 };
 
-// 3. PUT /gastos/:id – Actualizar y recalcular saldo (CORREGIDO)
 exports.updateGasto = async (req, res) => {
     try {
         const { id } = req.params;
@@ -90,7 +85,6 @@ exports.updateGasto = async (req, res) => {
         const gasto = await Gasto.findOne({ where: { id, usuario_id } });
         if (!gasto) return res.status(404).json({ error: 'Gasto no encontrado' });
 
-        // Actualización de métricas si cambia el monto
         if (monto !== undefined) {
             const nuevoMonto = parseFloat(monto);
             const montoAnterior = parseFloat(gasto.monto);
@@ -107,7 +101,6 @@ exports.updateGasto = async (req, res) => {
             }
         }
 
-        // PROTECCIÓN DE FECHA: Evita el error "Invalid date" en PostgreSQL
         let fechaFinal = gasto.fecha;
         if (fecha && fecha !== 'Invalid date') {
             const d = new Date(fecha + "T12:00:00");
@@ -130,7 +123,6 @@ exports.updateGasto = async (req, res) => {
     }
 };
 
-// 4. DELETE /gastos/:id – Borrado lógico y ajuste de métricas
 exports.deleteGasto = async (req, res) => {
     try {
         const { id } = req.params;
@@ -153,7 +145,6 @@ exports.deleteGasto = async (req, res) => {
     }
 };
 
-// 5. POST /import-json
 exports.importJson = async (req, res) => {
     try {
         const { datos } = req.body;

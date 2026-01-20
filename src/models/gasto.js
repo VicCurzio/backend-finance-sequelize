@@ -1,10 +1,10 @@
 'use strict';
+
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Gasto extends Model {
     static associate(models) {
-      // define association here
     }
   }
   Gasto.init({
@@ -14,15 +14,15 @@ module.exports = (sequelize, DataTypes) => {
     descripcion: DataTypes.STRING,
     usuario_id: {
       type: DataTypes.INTEGER,
-      allowNull: false // Requisito: dejar asentado qué usuario dejó el registro
+      allowNull: false
     }
   }, {
     sequelize,
     modelName: 'Gasto',
-    tableName: 'gastos', // Nombre real en plural y minúsculas
-    underscored: true,   // Para que use created_at, updated_at y deleted_at
-    paranoid: true,      // REQUISITO: Eliminar gasto (soft delete - delete lógico)
-    timestamps: true     // Habilita el seguimiento de fechas
+    tableName: 'gastos',
+    underscored: true,
+    paranoid: true,
+    timestamps: true
   });
   return Gasto;
 };

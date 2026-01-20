@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-// Usa la misma clave que definiste en el microservicio de Auth
 const JWT_SECRET = process.env.JWT_SECRET || 'clave_secreta';
 
 module.exports = (req, res, next) => {
@@ -12,7 +11,6 @@ module.exports = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        // Guardamos los datos del usuario (id, email) en el objeto request
         req.user = decoded;
         next();
     } catch (error) {

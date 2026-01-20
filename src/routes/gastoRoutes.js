@@ -6,8 +6,8 @@ const authMiddleware = require('../middlewares/auth');
 router.use(authMiddleware);
 
 router.post('/', gastoController.createGasto);
-router.get('/', gastoController.getGastos); // REQUISITO 1.6
-router.put('/:id', gastoController.updateGasto); // REQUISITO 1.7
-router.delete('/:id', gastoController.deleteGasto); // REQUISITO 1.8
+router.get('/', gastoController.getGastos);
+router.put('/:id', gastoController.updateGasto);
+router.delete('/:id', gastoController.deleteGasto);
 
 module.exports = router;

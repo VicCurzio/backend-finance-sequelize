@@ -1,6 +1,8 @@
 {
   "info": {
+    "_postman_id": "finance-sequelize-collection",
     "name": "Finanzas - Sequelize",
+    "description": "Colección para gestión de Ventas, Gastos y Dashboard (Microservicio Sequelize)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -11,8 +13,25 @@
           "name": "Listar Ventas (Filtro Mes)",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "http://localhost:3002/ventas?filtro=mes"
+              "raw": "{{BASE_URL}}/ventas?filtro=mes&fechaSeleccionada=2026-01",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "ventas"
+              ],
+              "query": [
+                {
+                  "key": "filtro",
+                  "value": "mes"
+                },
+                {
+                  "key": "fechaSeleccionada",
+                  "value": "2026-01"
+                }
+              ]
             }
           }
         },
@@ -20,9 +39,10 @@
           "name": "Crear Venta",
           "request": {
             "method": "POST",
+            "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"fecha\": \"2024-01-18\",\n    \"categoria\": \"Software\",\n    \"monto\": 1500.50,\n    \"descripcion\": \"Licencia Anual\"\n}",
+              "raw": "{\n    \"fecha\": \"2026-01-20\",\n    \"categoria\": \"Ventas Directas\",\n    \"monto\": 5000.00,\n    \"descripcion\": \"Venta de prueba\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -30,7 +50,7 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3002/ventas"
+              "raw": "{{BASE_URL}}/ventas"
             }
           }
         },
@@ -38,9 +58,10 @@
           "name": "Actualizar Venta",
           "request": {
             "method": "PUT",
+            "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"monto\": 2000\n}",
+              "raw": "{\n    \"monto\": 7500.00,\n    \"descripcion\": \"Monto corregido\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -48,16 +69,17 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3002/ventas/1"
+              "raw": "{{BASE_URL}}/ventas/1"
             }
           }
         },
         {
-          "name": "Eliminar Venta (Soft)",
+          "name": "Eliminar Venta (Soft Delete)",
           "request": {
             "method": "DELETE",
+            "header": [],
             "url": {
-              "raw": "http://localhost:3002/ventas/1"
+              "raw": "{{BASE_URL}}/ventas/1"
             }
           }
         }
@@ -67,11 +89,28 @@
       "name": "Gastos",
       "item": [
         {
-          "name": "Listar Gastos",
+          "name": "Listar Gastos (Filtro Semana)",
           "request": {
             "method": "GET",
+            "header": [],
             "url": {
-              "raw": "http://localhost:3002/gastos?periodo=semana"
+              "raw": "{{BASE_URL}}/gastos?filtro=semana&fechaSeleccionada=2026-01-20",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "gastos"
+              ],
+              "query": [
+                {
+                  "key": "filtro",
+                  "value": "semana"
+                },
+                {
+                  "key": "fechaSeleccionada",
+                  "value": "2026-01-20"
+                }
+              ]
             }
           }
         },
@@ -79,9 +118,10 @@
           "name": "Crear Gasto",
           "request": {
             "method": "POST",
+            "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"categoria\": \"Oficina\",\n    \"monto\": 300,\n    \"descripcion\": \"Papelería\"\n}",
+              "raw": "{\n    \"fecha\": \"2026-01-20\",\n    \"categoria\": \"Mantenimiento\",\n    \"monto\": 1200.00,\n    \"descripcion\": \"Pago de servicios\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -89,22 +129,53 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3002/gastos"
+              "raw": "{{BASE_URL}}/gastos"
+            }
+          }
+        },
+        {
+          "name": "Actualizar Gasto",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/gastos/1"
+            }
+          }
+        },
+        {
+          "name": "Eliminar Gasto (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/gastos/1"
             }
           }
         }
       ]
     },
     {
-      "name": "Sistema",
+      "name": "Dashboard & Utilidades",
       "item": [
+        {
+          "name": "Dashboard Line-Chart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/dashboard/line-chart"
+            }
+          }
+        },
         {
           "name": "Importar JSON (Bulk)",
           "request": {
             "method": "POST",
+            "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"tipo\": \"venta\",\n    \"datos\": [\n        { \"categoria\": \"Hardware\", \"monto\": 500, \"descripcion\": \"Mouse\" },\n        { \"categoria\": \"Hardware\", \"monto\": 1200, \"descripcion\": \"Teclado\" }\n    ]\n}",
+              "raw": "{\n    \"tipo\": \"venta\",\n    \"datos\": [\n        { \"fecha\": \"2026-01-15\", \"categoria\": \"Hardware\", \"monto\": 500, \"descripcion\": \"Mouse\" },\n        { \"fecha\": \"2026-01-20\", \"categoria\": \"Software\", \"monto\": 1200, \"descripcion\": \"Licencia\" }\n    ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -112,16 +183,7 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3002/import-json"
-            }
-          }
-        },
-        {
-          "name": "Dashboard Chart",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "http://localhost:3002/dashboard/line-chart"
+              "raw": "{{BASE_URL}}/import-json"
             }
           }
         }
@@ -133,9 +195,32 @@
     "bearer": [
       {
         "key": "token",
-        "value": "PEGAR_TOKEN_AQUI",
+        "value": "{{TOKEN}}",
         "type": "string"
       }
     ]
-  }
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "https://backend-finance-sequelize.onrender.com",
+      "type": "string"
+    },
+    {
+      "key": "TOKEN",
+      "value": "tu_jwt_aqui",
+      "type": "string"
+    }
+  ]
 }

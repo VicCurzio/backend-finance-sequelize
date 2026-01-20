@@ -1,48 +1,72 @@
-# Microservicio de Finanzas (Sequelize)
+# 💰 Microservicio de Finanzas (Sequelize)
 
-Este microservicio gestiona las ventas, gastos y métricas financieras del Dashboard.
+Este microservicio es responsable de la gestión de transacciones financieras (ventas y gastos) y la generación de métricas para el Dashboard. Utiliza Sequelize ORM para la persistencia en PostgreSQL y garantiza la integridad de los datos mediante validación de tokens JWT.
 
-## Requisitos de Instalación
-1. Clonar el repositorio.
-2. Ejecutar `npm install`.
-3. Configurar el archivo `.env` con las credenciales de PostgreSQL y el `JWT_SECRET` compartido.
+## 🛠️ Tecnologías utilizadas
 
-## Ejecución
-- Modo desarrollo: `npm run dev`
-- Migraciones: `npx sequelize-cli db:migrate`
+* Node.js & Express: Framework base del servidor.
+* PostgreSQL: Base de datos relacional.
+* Sequelize ORM: Gestión de modelos y migraciones.
+* JWT (JsonWebToken): Seguridad y autorización de endpoints.
 
-## Importación Inicial (Carga JSON)
-Para cumplir con el requisito 1.10, utiliza el endpoint:
-`POST /import-json`
-Envía un body con el tipo ('venta' o 'gasto') y un array de objetos bajo la llave 'datos'.
+## 🚀 Instalación y Configuración
 
-## Endpoints Principales
-- **Ventas**: GET (con filtro día/semana/mes/año), POST, PUT, DELETE (Soft Delete).
-- **Gastos**: GET, POST, PUT, DELETE (Soft Delete).
-- **Dashboard**: GET `/dashboard/line-chart` para datos agregados.
+### 1. Requisitos previos
 
-# Microservicio de Finanzas (Sequelize)
+* Clonar el repositorio.
+* Instalar dependencias:
+```bash
+npm install
+```
 
-Gestión de ventas, gastos y métricas financieras con persistencia en PostgreSQL y validación JWT.
+### 2. Variables de Entorno (.env)
 
-## Instalación
-1. `npm install`
-2. Configurar `.env` (DB_USER, DB_PASS, DB_NAME, JWT_SECRET).
-3. Ejecutar migraciones: `npx sequelize-cli db:migrate`.
+Crea un archivo `.env` en la raíz del proyecto con la siguiente configuración:
+```
+PORT=3002
+DATABASE_URL=postgresql://postgres.fqnktwmdcewmarldihfv:w8HgJJU3uxatAH1b@aws-1-us-east-2.pooler.supabase.com:5432/postgres
+JWT_SECRET=secret_key
+NODE_ENV=production
+```
 
-## Ejecución
-- Desarrollo: `npm run dev`.
-- Producción: `npm start`.
+**Nota:** Para el despliegue en Render, asegúrate de que `NODE_ENV` sea `production` para habilitar la conexión SSL con Supabase.
 
-## Características Implementadas
-- **CRUD Completo**: Ventas y Gastos con filtros de tiempo.
-- **Soft Delete**: Los registros usan la columna `deleted_at`.
-- **KPIs**: Tabla de métricas calculadas en tiempo real.
-- **Importación Masiva**: Endpoint `/import-json` para carga de datos.
-- **Seguridad**: Middleware de validación de tokens JWT.
+### 3. Base de Datos y Migraciones
 
-## Pruebas con Postman
-En la carpeta `/postman` de este repositorio encontrarás el archivo `Finanzas - Sequelize.postman_collection.json`. 
-1. Impórtalo en tu Postman.
-2. Asegúrate de tener el Microservicio de Auth corriendo para obtener el Token.
-3. Copia el Token en la pestaña **Authorization** (Bearer Token) de las peticiones de Ventas/Gastos.
+Para crear las tablas de Ventas, Gastos y Métricas, ejecuta:
+```bash
+npx sequelize-cli db:migrate
+```
+
+## 📡 Endpoints del API
+
+### Ventas y Gastos
+
+* POST `/ventas` / `/gastos`: Crear un nuevo registro.
+* GET `/ventas` / `/gastos`: Listar registros. Soporta filtros de tiempo:
+  * Parámetros: `?filtro=dia|semana|mes|año&fechaSeleccionada=YYYY-MM-DD`.
+* PUT `/ventas/:id` / `/gastos/:id`: Actualizar un registro existente.
+* DELETE `/ventas/:id` / `/gastos/:id`: Eliminación lógica (Soft Delete). El registro permanece en la DB con la columna `deleted_at` pero se oculta de los resultados.
+
+### Dashboard e Importación
+
+* GET `/dashboard/line-chart`: Retorna datos agregados para visualización en gráficos (Recharts).
+* POST `/import-json`: Carga masiva de datos. Formato:
+```json
+{
+  "tipo": "venta",
+  "datos": [{ "fecha": "2026-01-20", "categoria": "Hardware", "monto": 500, "descripcion": "Mouse" }]
+}
+```
+
+## 🧪 Pruebas con Postman
+
+1. Localiza el archivo `Finanzas - Sequelize.postman_collection.json` en la carpeta `/postman` de este repositorio.
+2. Impórtalo en Postman.
+3. **Importante:** Este microservicio requiere autorización. Debes obtener un token desde el Microservicio de Auth y pegarlo en la pestaña Authorization (Bearer Token) de la colección o de la solicitud.
+
+## ⚙️ Características Técnicas Destacadas
+
+* **Soft Delete:** Implementado mediante `paranoid: true` en los modelos de Sequelize.
+* **KPIs en tiempo real:** Los montos de las métricas se actualizan automáticamente al crear o importar registros.
+* **Arquitectura de Microservicios:** Servicio totalmente independiente que se comunica mediante la base de datos compartida y validación JWT.

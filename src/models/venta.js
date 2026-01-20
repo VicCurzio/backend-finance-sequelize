@@ -1,10 +1,10 @@
 'use strict';
+
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
   class Venta extends Model {
     static associate(models) {
-      // Como indicaste, no hay FK física con Usuarios
     }
   }
 
@@ -27,14 +27,14 @@ module.exports = (sequelize, DataTypes) => {
     },
     usuario_id: {
       type: DataTypes.INTEGER,
-      allowNull: false // Se extrae del JWT en el controlador
+      allowNull: false
     }
   }, {
     sequelize,
     modelName: 'Venta',
     tableName: 'ventas',
     underscored: true,
-    paranoid: true, // REQUISITO: Soft Delete (deleted_at)
+    paranoid: true,
     timestamps: true
   });
 
