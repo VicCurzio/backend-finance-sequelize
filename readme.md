@@ -24,7 +24,7 @@ npm install
 Crea un archivo `.env` en la raíz del proyecto con la siguiente configuración:
 ```
 PORT=3002
-DATABASE_URL=postgresql://postgres.fqnktwmdcewmarldihfv:w8HgJJU3uxatAH1b@aws-1-us-east-2.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql:postgres://postgres:admin123@localhost:5432/dashboard_finanzas
 JWT_SECRET=secret_key
 NODE_ENV=production
 ```
